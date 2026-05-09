@@ -1,22 +1,51 @@
 const mongoose = require('mongoose')
 
+const optionSchema = new mongoose.Schema(
+  {
+    text: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: 300,
+    },
+    imageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MediaAsset',
+      default: null,
+    },
+  },
+  { _id: false }
+)
+
 const questionSchema = new mongoose.Schema(
   {
     text: {
       type: String,
-      required: true,
       trim: true,
-      minlength: 3,
+      default: '',
       maxlength: 400,
     },
+    imageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MediaAsset',
+      default: null,
+    },
     options: {
-      type: [String],
+      type: [optionSchema],
       required: true,
       validate: {
         validator(options) {
-          return Array.isArray(options) && options.length === 4 && options.every((opt) => !!opt && opt.trim())
+          return (
+            Array.isArray(options) &&
+            options.length === 4 &&
+            options.every((opt) => {
+              if (!opt || typeof opt !== 'object') return false
+              const hasText = typeof opt.text === 'string' && opt.text.trim().length > 0
+              return hasText || !!opt.imageId
+            })
+          )
         },
-        message: 'Each question must contain exactly 4 non-empty options.',
+        message: 'Each question must contain exactly 4 options, each with text or an image.',
       },
     },
     correctAnswer: {
@@ -28,6 +57,11 @@ const questionSchema = new mongoose.Schema(
   },
   { _id: false }
 )
+
+questionSchema.path('text').validate(function validateQuestionPrompt(value) {
+  const hasText = typeof value === 'string' && value.trim().length >= 3
+  return hasText || !!this.imageId
+}, 'Each question must include text (at least 3 chars) or an image.')
 
 const quizSchema = new mongoose.Schema(
   {

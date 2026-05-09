@@ -41,6 +41,24 @@ function errorHandler(error, req, res, next) {
     })
   }
 
+  if (error.name === 'MulterError') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: error.message || 'Invalid file upload request.',
+      },
+    })
+  }
+
+  if (error.message === 'Unsupported image format.') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: 'Unsupported image format. Use jpeg, png, webp, or gif.',
+      },
+    })
+  }
+
   return res.status(500).json({
     success: false,
     error: {

@@ -152,8 +152,56 @@ async function getDashboard(req, res) {
   })
 }
 
+async function updateUsername(req, res) {
+  const studentId = req.params.studentId?.trim()
+  const { username, school } = req.body || {}
+
+  if (!studentId) {
+    throw new HttpError(400, 'studentId path parameter is required.')
+  }
+
+  if (!username || typeof username !== 'string') {
+    throw new HttpError(400, 'username is required and must be a string.')
+  }
+
+  const normalizedUsername = normalizeUsername(username)
+  if (normalizedUsername.length < 3 || normalizedUsername.length > 30) {
+    throw new HttpError(400, 'username must be between 3 and 30 characters.')
+  }
+
+  const normalizedSchool = validateSchool(school)
+
+  const student = await Student.findOne({ _id: studentId, school: normalizedSchool })
+  if (!student) {
+    throw new HttpError(404, 'Student not found for the selected school.')
+  }
+
+  if (student.username !== normalizedUsername) {
+    const existingStudent = await Student.findOne({
+      _id: { $ne: student._id },
+      username: normalizedUsername,
+      school: normalizedSchool,
+    }).select('_id')
+
+    if (existingStudent) {
+      throw new HttpError(409, 'This username is already taken in your school.')
+    }
+  }
+
+  student.username = normalizedUsername
+  student.avatarSeed = normalizedUsername
+  await student.save()
+
+  return res.status(200).json({
+    success: true,
+    data: student,
+    message: 'Username updated successfully.',
+  })
+}
+
 module.exports = {
   signup,
   login,
   getDashboard,
+  updateUsername,
 }
